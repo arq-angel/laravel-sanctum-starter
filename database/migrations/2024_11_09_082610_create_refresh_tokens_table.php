@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->string('token')->unique();
             $table->timestamp('expires_at')->nullable();
+            $table->text('device_name')->nullable(); // we need to add more info than this to validate the each session and revoke accordingly
             $table->timestamps();
         });
     }

@@ -9,7 +9,7 @@ class RefreshToken extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'token', 'expires_at'];
+    protected $fillable = ['user_id', 'token', 'expires_at', 'device_name'];
 
     public function user()
     {

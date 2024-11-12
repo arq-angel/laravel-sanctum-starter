@@ -14,6 +14,7 @@ Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 /** api/v1 */
 Route::group(['prefix' => '/v1', 'namespace' => 'App\Http\Controllers\Api\V1', 'middleware' => []], function () {
 
+    /** Demo routes start */
     Route::get('/hello', function (Request $request) {
         return response()->json([
             'isSuccess' => true,
@@ -21,7 +22,6 @@ Route::group(['prefix' => '/v1', 'namespace' => 'App\Http\Controllers\Api\V1', '
             'request' => $request->all()
         ]);
     });
-
     Route::post('/sanctum/token', function (Request $request) {
         $request->validate([
             'email' => ['required', 'string', 'email', 'max:248'],
@@ -43,23 +43,45 @@ Route::group(['prefix' => '/v1', 'namespace' => 'App\Http\Controllers\Api\V1', '
 
         return $user->createToken($request->device_name)->plainTextToken;
     });
+    /** Demo routes end */
 
+    /** Route to authenticate and receive the accessToken and refreshToken */
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
-    Route::post('/refresh-token', [AuthController::class, 'refreshToken']);
+    // Route::post('/login', [AuthController::class, 'login']);
+
+
+    /** Middleware to verify if the refresh token exists in the refresh_tokens table before executing other actions */
+    Route::group(['middleware' => ['verify.refresh.token',]], function () {
+        /** Route to refresh the accessToken using refreshToken */
+        Route::post('/refresh-token', [AuthController::class, 'refreshToken']);
+    });
+
 
     /** Sanctum protected routes */
     Route::group(['middleware' => ['auth:sanctum']], function () {
-        Route::get('/protected', function (Request $request) {
-            return response()->json([
-                'isSuccess' => true,
-                'message' => 'Protected!',
-                'request' => $request->all(),
-                'userName' => $request->user()->name,
-            ]);
+
+        /** Throttled routes */
+        Route::group(['middleware' => 'throttle:6,1'], function () {
+            /** Demo route to check authentication */
+            Route::get('/protected', function (Request $request) {
+                return response()->json([
+                    'isSuccess' => true,
+                    'message' => 'Protected!',
+                    'request' => $request->all(),
+                    'userName' => $request->user()->name,
+                ]);
+            });
+
+            /** Route to get the list of logged in devices */
+            Route::get('/logged-in-devices', [AuthController::class, 'getLoggedInDevices']);
+
+            /** Route to log out from current session only */
+            Route::post('/logout', [AuthController::class, 'logout']);
+
+            /** Route to log out from all sessions */
+            Route::post('/logout-from-all', [AuthController::class, 'logoutFromAll']);
         });
 
-        Route::post('/logout', [AuthController::class, 'logout']);
-        Route::post('/logout-from-all', [AuthController::class, 'logoutFromAll']);
 
     });
 
