@@ -2,14 +2,13 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, HasApiTokens;
@@ -24,8 +23,8 @@ class User extends Authenticatable
         'first_name',
         'last_name',
         'email',
-        'phone',
         'password',
+        'phone',
         'date_of_birth',
         'address',
         'suburb',
@@ -57,8 +56,4 @@ class User extends Authenticatable
         ];
     }
 
-    public function refreshToken() : BelongsTo
-    {
-        //
-    }
 }

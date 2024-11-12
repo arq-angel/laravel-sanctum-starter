@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\UserController;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -46,9 +47,7 @@ Route::group(['prefix' => '/v1', 'namespace' => 'App\Http\Controllers\Api\V1', '
     /** Demo routes end */
 
     /** Route to authenticate and receive the accessToken and refreshToken */
-    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
-    // Route::post('/login', [AuthController::class, 'login']);
-
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1', 'verified');
 
     /** Middleware to verify if the refresh token exists in the refresh_tokens table before executing other actions */
     Route::group(['middleware' => ['verify.refresh.token',]], function () {
@@ -56,9 +55,12 @@ Route::group(['prefix' => '/v1', 'namespace' => 'App\Http\Controllers\Api\V1', '
         Route::post('/refresh-token', [AuthController::class, 'refreshToken']);
     });
 
+    /** Users need to register before being logged in */
+    Route::post('/user', [UserController::class, 'store']);
+
 
     /** Sanctum protected routes */
-    Route::group(['middleware' => ['auth:sanctum']], function () {
+    Route::group(['middleware' => ['auth:sanctum', 'verified']], function () {
 
         /** Throttled routes */
         Route::group(['middleware' => 'throttle:6,1'], function () {
@@ -81,6 +83,10 @@ Route::group(['prefix' => '/v1', 'namespace' => 'App\Http\Controllers\Api\V1', '
             /** Route to log out from all sessions */
             Route::post('/logout-from-all', [AuthController::class, 'logoutFromAll']);
         });
+
+        /** Route to perform user CRUD actions */
+        /** preventing logged in users from registering new user profile or abusing the system */
+        Route::apiResource('/user', UserController::class)->except(['store', 'show']);
 
 
     });

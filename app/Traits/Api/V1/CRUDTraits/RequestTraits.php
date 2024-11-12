@@ -2,7 +2,7 @@
 
 namespace App\Traits\Api\V1\CRUDTraits;
 
-trait ApiCRUDTraits
+trait RequestTraits
 {
     /**
      * @return int

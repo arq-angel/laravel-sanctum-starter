@@ -2,7 +2,7 @@
 
 namespace App\Traits\Api\V1;
 
-trait ApiDebugTraits
+trait DebugTraits
 {
     /**
      * @return bool

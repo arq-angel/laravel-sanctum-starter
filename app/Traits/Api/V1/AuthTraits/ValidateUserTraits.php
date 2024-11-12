@@ -6,7 +6,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
-trait ApiValidateUserTraits
+trait ValidateUserTraits
 {
     /**
      * @param string $email

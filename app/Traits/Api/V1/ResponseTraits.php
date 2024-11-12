@@ -10,9 +10,9 @@ use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 
-trait ApiResponseTraits
+trait ResponseTraits
 {
-    use ApiDebugTraits;
+    use DebugTraits;
 
     /**
      * @param bool $isSuccess
