@@ -60,10 +60,10 @@ Route::group(['prefix' => '/v1', 'namespace' => 'App\Http\Controllers\Api\V1', '
     Route::post('/user', [UserController::class, 'store'])->name('user.store');
 
     /** Route to verify email with token */
-    Route::post('/email/verify', [EmailVerificationController::class, 'verify']);
+    Route::post('/email/verify', [EmailVerificationController::class, 'verify'])->name('api.verification.verify');
 
     /** Route to request verification link */
-    Route::get('/email/send-verification', [EmailVerificationController::class, 'sendVerificationEmail']);
+    Route::post('/email/send-verification', [EmailVerificationController::class, 'sendVerificationEmail'])->name('api.verification.send');
 
     /** Sanctum protected routes */
     Route::group(['middleware' => ['auth:sanctum', 'verified']], function () {
