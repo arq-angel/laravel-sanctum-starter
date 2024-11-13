@@ -7,22 +7,18 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\StoreUserRequest;
 use App\Http\Requests\Api\V1\UpdateUserRequest;
 use App\Http\Resources\Api\V1\UserResource;
-use App\Models\RefreshToken;
 use App\Models\User;
 use App\Traits\Api\V1\AuthTraits\TokenRevokeTrait;
 use App\Traits\Api\V1\CRUDTraits\RegistrationTrait;
 use App\Traits\Api\V1\ResponseTrait;
 use App\Traits\Api\V1\AuthTraits\RetrieveUserTrait;
 use App\Traits\Api\V1\CRUDTraits\ImageUploadTrait;
-use Exception;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
-use function Illuminate\Events\queueable;
 
 class UserController extends Controller
 {
@@ -96,7 +92,8 @@ class UserController extends Controller
                 message: $message ?? 'User created successfully.',
                 data: [
                     'user' => new UserResource($user),
-                ]
+                ],
+                statusCode: Response::HTTP_CREATED
             );
 
             // Step 5: Mark operation as successful
@@ -145,7 +142,7 @@ class UserController extends Controller
 
             // Step 3: Prepare success response
             $response = $this->successResponse(
-                message: 'User created successfully.',
+                message: 'User updated successfully.',
                 data: [
                     'user' => new UserResource($user),
                 ]
@@ -157,7 +154,7 @@ class UserController extends Controller
         } catch (Throwable $throwable) {
             // Step 5: Handle exceptions
             $response = $this->errorResponse(
-                message: 'An error occurred while creating user!',
+                message: 'An error occurred while updating user!',
                 exception: $throwable,
                 statusCode: Response::HTTP_INTERNAL_SERVER_ERROR
             );

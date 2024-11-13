@@ -38,7 +38,7 @@ class UserFactory extends Factory
             'post_code' => $this->faker->postcode,
             'country' => $this->faker->country,
             'is_active' => 1,
-            'is_verified' => 0,
+            'is_verified' => 1,
             'remember_token' => Str::random(10),
         ];
     }

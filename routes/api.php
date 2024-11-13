@@ -57,7 +57,7 @@ Route::group(['prefix' => '/v1', 'namespace' => 'App\Http\Controllers\Api\V1', '
     });
 
     /** Users need to register before being logged in */
-    Route::post('/user', [UserController::class, 'store']);
+    Route::post('/user', [UserController::class, 'store'])->name('user.store');
 
     /** Route to verify email with token */
     Route::post('/email/verify', [EmailVerificationController::class, 'verify']);
@@ -92,7 +92,7 @@ Route::group(['prefix' => '/v1', 'namespace' => 'App\Http\Controllers\Api\V1', '
 
         /** Route to perform user CRUD actions */
         /** preventing logged in users from registering new user profile or abusing the system */
-        Route::apiResource('/user', UserController::class)->except(['store', 'show']);
+        Route::apiResource('/user', UserController::class)->names('user')->except(['store', 'show']);
 
 
     });
