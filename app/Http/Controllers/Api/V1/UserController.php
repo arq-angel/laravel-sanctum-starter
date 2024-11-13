@@ -9,29 +9,24 @@ use App\Http\Requests\Api\V1\UpdateUserRequest;
 use App\Http\Resources\Api\V1\UserResource;
 use App\Models\RefreshToken;
 use App\Models\User;
-use App\Traits\Api\V1\ResponseTraits;
-use App\Traits\Api\V1\AuthTraits\RetrieveUserTraits;
+use App\Traits\Api\V1\AuthTraits\TokenRevokeTrait;
+use App\Traits\Api\V1\CRUDTraits\RegistrationTrait;
+use App\Traits\Api\V1\ResponseTrait;
+use App\Traits\Api\V1\AuthTraits\RetrieveUserTrait;
 use App\Traits\Api\V1\CRUDTraits\ImageUploadTrait;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 use function Illuminate\Events\queueable;
 
 class UserController extends Controller
 {
-    use ImageUploadTrait, ResponseTraits, RetrieveUserTraits;
-
-    private array $returnMessage = [
-        'isSuccess' => false,
-        'message' => 'An error occurred',
-        'data' => [],
-    ];
-
-    private int $returnMessageStatus = Response::HTTP_BAD_REQUEST;
+    use ImageUploadTrait, ResponseTrait, RetrieveUserTrait, RegistrationTrait, TokenRevokeTrait;
 
     /**
      * Display a listing of the resource.
@@ -91,32 +86,37 @@ class UserController extends Controller
             // Step 2: Store the validated user data
             $user = $this->storeUserProfile(validated: $validated, request: $request);
 
-            // Step 3: Prepare success response
+            // Step 3: Send a custom message if the $user has to be verified
+            if ($this->isEmailVerificationRequired($user)) {
+                $message = 'User created successfully! Please verify email to login.';
+            }
+
+            // Step 4: Prepare success response
             $response = $this->successResponse(
-                message: 'User created successfully.',
+                message: $message ?? 'User created successfully.',
                 data: [
                     'user' => new UserResource($user),
                 ]
             );
 
-            // Step 4: Mark operation as successful
+            // Step 5: Mark operation as successful
             $success = true;
         } catch (Throwable $throwable) {
-            // Step 5: Handle exceptions
+            // Step 6: Handle exceptions
             $response = $this->errorResponse(
-                message: 'An error occurred while retrieving user information!',
+                message: 'An error occurred while creating user!',
                 exception: $throwable,
                 statusCode: Response::HTTP_INTERNAL_SERVER_ERROR
             );
         } finally {
-            // Step 6: Log the login attempt
+            // Step 7: Log the login attempt
             Log::info('Create user attempted,', [
                 'email' => $user->email ?? 'Unknown',
                 'result' => $success ? 'success' : 'failure',
             ]);
         }
 
-        // Step 7: Return response
+        // Step 8: Return response
         return $response;
     }
 
@@ -133,43 +133,44 @@ class UserController extends Controller
      */
     public function update(UpdateUserRequest $request, User $user)
     {
+        $success = false;
+        $response = null;
+
         try {
-
-            $authUser = Auth::guard('sanctum')->user();
-
-            if (!$authUser || $authUser->id !== $user->id) {
-                return response()->json([
-                    'isSuccess' => false,
-                    'message' => 'Unauthorized access!',
-                ], Response::HTTP_FORBIDDEN);
-            }
-
+            // Step 1: Get the validated user data
             $validated = $request->validated();
 
-            // Perform the update using the new method
-            $updatedUser = $this->updateUserProfile($validated, $authUser, $request);
+            // Step 2: Update the validated user data
+            $user = $this->updateUserProfile(validated: $validated, user: $user, request: $request);
 
-            $this->returnMessage = [
-                'isSuccess' => true,
-                'message' => 'User updated successfully.',
-                'data' => [
-                    'user' => new UserResource($updatedUser),
+            // Step 3: Prepare success response
+            $response = $this->successResponse(
+                message: 'User created successfully.',
+                data: [
+                    'user' => new UserResource($user),
                 ]
-            ];
-            $this->returnMessageStatus = Response::HTTP_OK;
+            );
 
-        } catch (\Throwable $throwable) {
-            $this->returnMessage = [
-                'isSuccess' => false,
-                'message' => "An error occurred while updating user!",
-            ];
-            if ($this->debuggable() && $this->isLocalEnvironment()) {
-                $this->returnMessage['debug'] = $throwable->getMessage();
-            }
-            $this->returnMessageStatus = Response::HTTP_INTERNAL_SERVER_ERROR;
+            // Step 4: Mark operation as successful
+            $success = true;
+
+        } catch (Throwable $throwable) {
+            // Step 5: Handle exceptions
+            $response = $this->errorResponse(
+                message: 'An error occurred while creating user!',
+                exception: $throwable,
+                statusCode: Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         } finally {
-            return response()->json($this->returnMessage, $this->returnMessageStatus);
+            // Step 6: Log the login attempt
+            Log::info('Update user attempted,', [
+                'email' => $user->email ?? 'Unknown',
+                'result' => $success ? 'success' : 'failure',
+            ]);
         }
+
+        // Step 8: Return response
+        return $response;
     }
 
     /**
@@ -177,38 +178,44 @@ class UserController extends Controller
      */
     public function destroy(User $user)
     {
+        $success = false;
+        $response = null;
+
         try {
+            // Step 1: Delete the stored image
             if ($user->image) {
                 $this->deleteImage($user->image);
             }
 
-            // Delete all tokens associated with the employee (logs out from all sessions)
-            $user->tokens()->delete();
+            // Step 2: Revoke all refresh and access tokens
+            // Refresh tokens are cascade on delete but the access tokens are not so i am manually deleting all tokens here for safety
+            $this->revokeAllTokensForUser($user);
 
-            // Delete refresh tokens from the database
-            RefreshToken::where('user_id', $user->id)->delete();
-
-            // Delete the user record
+            // Step 3: Delete the user record
             $user->delete();
 
-            $this->returnMessage = [
-                'isSuccess' => true,
-                'message' => 'User deleted successfully.',
-            ];
-            $this->returnMessageStatus = Response::HTTP_OK;
+            // Step 4: Create success response
+            $response = $this->successResponse(
+                message: 'User deleted successfully.',
+            );
 
-        } catch (\Throwable $throwable) {
-            $this->returnMessage = [
-                'isSuccess' => false,
-                'message' => "An error occurred while deleting user!",
-            ];
-            if ($this->debuggable() && $this->isLocalEnvironment()) {
-                $this->returnMessage['debug'] = $throwable->getMessage();
-            }
-            $this->returnMessageStatus = Response::HTTP_INTERNAL_SERVER_ERROR;
+        } catch (Throwable $throwable) {
+            // Step 5: Handle exceptions
+            $response = $this->errorResponse(
+                message: 'An error occurred while retrieving user information!',
+                exception: $throwable,
+                statusCode: Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         } finally {
-            return response()->json($this->returnMessage, $this->returnMessageStatus);
+            // Step 6: Log the login attempt
+            Log::info('Delete user attempted,', [
+                'email' => $user->email ?? 'Unknown',
+                'result' => $success ? 'success' : 'failure',
+            ]);
         }
+
+        // Step 7: Return response
+        return $response;
     }
 
     private function storeUserProfile(array $validated, $request): User
@@ -239,52 +246,59 @@ class UserController extends Controller
             $user->post_code = $validated['post_code'] ?? null;
             $user->country = $validated['country'] ?? null;
 
-            // Step 4: Send email verification
-
-
-            // Step : Save the user
+            // Step 4: Save the user
             $user->save();
+
+            // Step 5: Send email verification if it is required
+            if ($this->isEmailVerificationRequired($user)) {
+                $user->sendEmailVerificationNotification();
+            }
+
+            // Step 6: Create remember token for $user
+            $this->saveRememberToken($user);
 
             // Step : Return the saved user
             return $user;
         });
     }
 
-    private function updateUserProfile(array $validated, $authUser, $request)
+    private function updateUserProfile(array $validated, $user, $request)
     {
-        return DB::transaction(function () use ($validated, $authUser, $request) {
+        return DB::transaction(function () use ($validated, $user, $request) {
             // Handle image upload
             if ($validated['image'] ?? null) {
-                $imagePath = $this->updateImage($request, 'image', 'uploads', $authUser->image);
+                $imagePath = $this->updateImage($request, 'image', 'uploads', $user->image);
 
                 if (!$imagePath) {
                     throw new ImageUploadFailedException("Image upload failed"); // This will be caught and handled by try catch block in update method
                 }
 
-                $authUser->image = $imagePath;
+                $user->image = $imagePath;
             }
 
-            // Update other fields
-            // $authUser->fill($validated); // uses fillable property in User model to bind the field with its value - cleaner implementation
-
             // Verbose implementation - more control by my choice
-            $authUser->first_name = $validated['first_name'] ?? $authUser->first_name;
-            $authUser->last_name = $validated['last_name'] ?? $authUser->last_name;
-            $authUser->email = $validated['email'] ?? $authUser->email;
-            $authUser->phone = $validated['phone'] ?? $authUser->phone;
-            $authUser->date_of_birth = $validated['date_of_birth'] ?? $authUser->date_of_birth;
-            $authUser->address = $validated['address'] ?? $authUser->address;
-            $authUser->suburb = $validated['suburb'] ?? $authUser->suburb;
-            $authUser->state = $validated['state'] ?? $authUser->state;
-            $authUser->post_code = $validated['post_code'] ?? $authUser->post_code;
-            $authUser->country = $validated['country'] ?? $authUser->country;
+            $user->first_name = $validated['first_name'] ?? $user->first_name;
+            $user->last_name = $validated['last_name'] ?? $user->last_name;
+            $user->email = $validated['email'] ?? $user->email;
+            $user->phone = $validated['phone'] ?? $user->phone;
+            $user->date_of_birth = $validated['date_of_birth'] ?? $user->date_of_birth;
+            $user->address = $validated['address'] ?? $user->address;
+            $user->suburb = $validated['suburb'] ?? $user->suburb;
+            $user->state = $validated['state'] ?? $user->state;
+            $user->post_code = $validated['post_code'] ?? $user->post_code;
+            $user->country = $validated['country'] ?? $user->country;
 
             // Save the updated user
-            // $authUser->save();
-            $authUser->update();
+            $user->update();
 
-            return $authUser; // Return the updated user
+            return $user; // Return the updated user
         });
+    }
+
+    private function saveRememberToken(User $user): void
+    {
+        $user->remember_token = Str::random(10);
+        $user->save();
     }
 
 }

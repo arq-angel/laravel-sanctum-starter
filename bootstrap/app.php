@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\Api\V1\AuthenticateAndCheckExpiry;
 use App\Http\Middleware\Api\V1\CheckAccessTokenExpiry;
+use App\Http\Middleware\Api\V1\EnsureEmailVerified;
 use App\Http\Middleware\Api\V1\VerifyRefreshToken;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
@@ -26,7 +27,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
 
-            /** The following validate various checks before passing to appropriate request classes or controllers */
+            /** The following middlewares validate various checks before passing to appropriate request classes or controllers */
+            'email.verified' => EnsureEmailVerified::class,
             'verify.refresh.token' => VerifyRefreshToken::class,
 
         ]);

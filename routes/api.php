@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\EmailVerificationController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -47,7 +48,7 @@ Route::group(['prefix' => '/v1', 'namespace' => 'App\Http\Controllers\Api\V1', '
     /** Demo routes end */
 
     /** Route to authenticate and receive the accessToken and refreshToken */
-    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1', 'verified');
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1', 'email.verified');
 
     /** Middleware to verify if the refresh token exists in the refresh_tokens table before executing other actions */
     Route::group(['middleware' => ['verify.refresh.token',]], function () {
@@ -58,6 +59,11 @@ Route::group(['prefix' => '/v1', 'namespace' => 'App\Http\Controllers\Api\V1', '
     /** Users need to register before being logged in */
     Route::post('/user', [UserController::class, 'store']);
 
+    /** Route to verify email with token */
+    Route::post('/email/verify', [EmailVerificationController::class, 'verify']);
+
+    /** Route to request verification link */
+    Route::get('/email/send-verification', [EmailVerificationController::class, 'sendVerificationEmail']);
 
     /** Sanctum protected routes */
     Route::group(['middleware' => ['auth:sanctum', 'verified']], function () {

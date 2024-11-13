@@ -9,7 +9,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-trait TokenRevokeTraits
+trait TokenRevokeTrait
 {
     /**
      * @param User $user

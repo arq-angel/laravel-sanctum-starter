@@ -3,7 +3,7 @@
 namespace App\Http\Middleware\Api\V1;
 
 use App\Models\RefreshToken;
-use App\Traits\Api\V1\AuthTraits\RetrieveUserTraits;
+use App\Traits\Api\V1\AuthTraits\RetrieveUserTrait;
 use Carbon\Carbon;
 use Closure;
 use Illuminate\Http\Request;
@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class VerifyRefreshToken
 {
-    use RetrieveUserTraits;
+    use RetrieveUserTrait;
 
     /**
      * Handle an incoming request.

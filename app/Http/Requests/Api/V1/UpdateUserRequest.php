@@ -42,10 +42,10 @@ class UpdateUserRequest extends FormRequest
     {
         return [
             'image' => ['nullable', 'image', 'max: 2048'],
-            'first_name' => ['required', 'string', 'max: 100', 'regex:/^[a-zA-Z\s]+$/'],
-            'last_name' => ['required', 'string', 'max: 100', 'regex:/^[a-zA-Z\s]+$/'],
-            'email' => ['required', 'string', 'email', 'max: 248', Rule::unique('users', 'email')->ignore($this->user()->id)],
-            'password' => ['required', 'string', 'min: 8', 'regex:/^(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/', 'confirmed'],
+            'first_name' => ['nullable', 'string', 'max: 100', 'regex:/^[a-zA-Z\s]+$/'],
+            'last_name' => ['nullable', 'string', 'max: 100', 'regex:/^[a-zA-Z\s]+$/'],
+            'email' => ['nullable', 'string', 'email', 'max: 248', Rule::unique('users', 'email')->ignore($this->user()->id)],
+//            'password' => ['nullable', 'string', 'min: 8', 'regex:/^(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/', 'confirmed'],
             'phone' => ['nullable', 'string', 'max: 20', 'regex:/^\+?[0-9]{10,15}$/', Rule::unique('users', 'phone')->ignore($this->user()->id)],
             'date_of_birth' => ['nullable', 'date'],
             'address' => ['nullable', 'string'],

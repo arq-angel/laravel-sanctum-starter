@@ -6,12 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\LoginRequest;
 use App\Http\Requests\Api\V1\LogoutRequest;
 use App\Http\Requests\Api\V1\RefreshTokenRequest;
-use App\Traits\Api\V1\ResponseTraits;
-use App\Traits\Api\V1\AuthTraits\RetrieveUserTraits;
-use App\Traits\Api\V1\AuthTraits\ValidateUserTraits;
-use App\Traits\Api\V1\AuthTraits\AuthControllerTraits;
-use App\Traits\Api\V1\AuthTraits\TokenCreateTraits;
-use App\Traits\Api\V1\AuthTraits\TokenRevokeTraits;
+use App\Traits\Api\V1\ResponseTrait;
+use App\Traits\Api\V1\AuthTraits\RetrieveUserTrait;
+use App\Traits\Api\V1\AuthTraits\ValidateUserTrait;
+use App\Traits\Api\V1\AuthTraits\AuthControllerTrait;
+use App\Traits\Api\V1\AuthTraits\TokenCreateTrait;
+use App\Traits\Api\V1\AuthTraits\TokenRevokeTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,7 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
 class AuthController extends Controller
 {
 
-    use ResponseTraits, TokenCreateTraits, TokenRevokeTraits, RetrieveUserTraits, ValidateUserTraits, AuthControllerTraits;
+    use ResponseTrait, TokenCreateTrait, TokenRevokeTrait, RetrieveUserTrait, ValidateUserTrait, AuthControllerTrait;
 
     /**
      * using class-level variables for this purpose can introduce issues in a shared or multi-threaded environment

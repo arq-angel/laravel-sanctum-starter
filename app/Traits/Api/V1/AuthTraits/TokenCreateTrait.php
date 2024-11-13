@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\NewAccessToken;
 
-trait TokenCreateTraits
+trait TokenCreateTrait
 {
     /**
      * @param User $user

@@ -5,7 +5,7 @@ namespace App\Traits\Api\V1\AuthTraits;
 use App\Models\RefreshToken;
 use App\Models\User;
 
-trait AuthControllerTraits
+trait AuthControllerTrait
 {
     /**
      * @param User $user

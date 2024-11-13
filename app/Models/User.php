@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Notifications\Api\V1\CustomVerifyEmail;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -54,6 +56,36 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * @return void
+     * Override the sendEmailVerificationNotification method to use custom notification
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new CustomVerifyEmail());
+    }
+
+    /**
+     * @return bool
+     * Override the hasVerifiedEmail method to use custom check
+     */
+    public function hasVerifiedEmail() : bool
+    {
+        return !is_null($this->email_verified_at) && ($this->is_verified);
+    }
+
+    /**
+     * @return bool
+     * Override the hasVerifiedEmail method to use custom fill
+     */
+    public function markEmailAsVerified(): bool
+    {
+        return $this->forceFill([
+            'email_verified_at' => $this->freshTimestamp(),
+            'is_verified' => true,
+        ])->save();
     }
 
 }

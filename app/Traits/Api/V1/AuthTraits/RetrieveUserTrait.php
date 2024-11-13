@@ -9,7 +9,7 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
-trait RetrieveUserTraits
+trait RetrieveUserTrait
 {
     /**
      * @param string $email
