@@ -5,9 +5,11 @@ namespace App\Traits\Api\V1;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 
 trait ResponseTrait
@@ -102,7 +104,22 @@ trait ResponseTrait
             'message' => 'An unexpected error occurred!',
         ];
 
-        if ($exception instanceof ValidationException) {
+        if ($exception instanceof MethodNotAllowedHttpException) {
+            $exceptionData = [
+                'status' => Response::HTTP_METHOD_NOT_ALLOWED,
+                'message' => 'The HTTP method used is not allowed for this route.',
+            ];
+        } elseif ($exception instanceof ThrottleRequestsException) {
+            $exceptionData = [
+                'status' => Response::HTTP_TOO_MANY_REQUESTS,
+                'message' => 'Too many requests! Please try again later.',
+            ];
+        } elseif ($exception instanceof HttpException) {
+            $exceptionData = [
+                'status' => $exception->getStatusCode(),
+                'message' => $exception->getMessage(),
+            ];
+        } elseif ($exception instanceof ValidationException) {
             $exceptionData = [
                 'status' => Response::HTTP_UNPROCESSABLE_ENTITY,
                 'errors' => $exception->errors(),
@@ -122,11 +139,6 @@ trait ResponseTrait
             $exceptionData = [
                 'status' => Response::HTTP_FORBIDDEN,
                 'message' => 'Unauthorized access!',
-            ];
-        } elseif ($exception instanceof MethodNotAllowedHttpException) {
-            $exceptionData = [
-                'status' => Response::HTTP_METHOD_NOT_ALLOWED,
-                'message' => 'The HTTP method used is not allowed for this route.',
             ];
         } elseif ($exception instanceof \Error) {
             $exceptionData = [

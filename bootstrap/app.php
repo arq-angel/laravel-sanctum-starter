@@ -69,20 +69,31 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Handler for exception uncaught by errorResponse method -  to be implemented in future optimization
         $exceptions->render(function (Throwable $throwable, $request) {
+            // Determine the status code dynamically
+            $statusCode = 500; // Default to 500 (Internal Server Error)
+
+            if (method_exists($throwable, 'getStatusCode')) {
+                $statusCode = $throwable->getStatusCode();
+            } elseif (property_exists($throwable, 'status')) {
+                $statusCode = $throwable->status;
+            }
+
+            // Handle JSON requests
             if ($request->expectsJson()) {
                 return response()->json([
                     'isSuccess' => false,
-                    'message' => 'Uncaught Exception - needs to be handled.',
+                    'message' => 'An exception occurred.',
                     'debug' => [
                         'error' => $throwable->getMessage(),
                         'trace' => $throwable->getTrace(),
                     ]
-                ], 404);
+                ], $statusCode);
             }
 
-            // For web routes, use the default behavior
-            return abort(404, 'Resource not found.');
+            // For web routes, return a default or exception-specific error page
+            return abort($statusCode, $throwable->getMessage() ?: 'An error occurred.');
         });
+
 
         /**
          * Custom Handler need to be created for

@@ -4,30 +4,23 @@ namespace Tests\Api\v1;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class AuthControllerTest extends TestCase
 {
-    /** vendor/bin/phpunit --testsuite=Api */
-    /** Use above command to only test this test or php artisan test that will test all test cases */
-
     use RefreshDatabase, WithFaker;
 
     /**
-     * A basic feature test example.
+     * Test that a user can log in with valid credentials and a verified email.
      */
-    public function test_example(): void
-    {
-        $response = $this->get('/');
-
-        $response->assertStatus(200);
-    }
-
-    public function test_user_can_login_with_valid_credentials()
+    public function test_user_can_login_with_valid_credentials_and_verified_email()
     {
         $user = \App\Models\User::factory()->create([
             'password' => bcrypt('password123'),
+            'email_verified_at' => now(),
+            'is_verified' => true,
         ]);
 
         $response = $this->postJson('/api/v1/login', [
@@ -44,74 +37,109 @@ class AuthControllerTest extends TestCase
                     'accessToken',
                     'refreshToken',
                     'expiresIn',
+                    'deviceName',
                 ],
             ]);
     }
 
-    public function test_user_cannot_login_with_invalid_credentials()
+    /**
+     * Test that a user cannot log in without a verified email.
+     */
+    public function test_user_cannot_login_without_verified_email()
     {
-        $user = \App\Models\User::factory()->create();
+        $user = \App\Models\User::factory()->create([
+            'password' => bcrypt('password123'),
+            'email_verified_at' => null, // Email not verified
+            'is_verified' => false,
+        ]);
 
         $response = $this->postJson('/api/v1/login', [
             'email' => $user->email,
-            'password' => 'wrong-password',
+            'password' => 'password123',
             'deviceName' => 'Postman',
         ]);
 
-        $response->assertStatus(422)
+        $response->assertStatus(403)
             ->assertJson([
                 'isSuccess' => false,
-                'message' => 'Validation failed.',
+                'message' => 'Access denied.',
             ]);
     }
 
-    public function test_user_can_logout()
+    /**
+     * Test that a verified user can log out successfully.
+     */
+    public function test_verified_user_can_logout()
     {
-        $user = \App\Models\User::factory()->create();
-        $token = $user->createToken('Test Device')->plainTextToken;
+        $deviceName = 'Test Device';
+        $user = \App\Models\User::factory()->create([
+            'email_verified_at' => now(),
+            'is_verified' => true,
+        ]);
+        $token = $user->createToken($deviceName)->plainTextToken;
 
         $response = $this->withHeader('Authorization', "Bearer $token")
-            ->postJson('/api/v1/logout');
+            ->postJson('/api/v1/logout', [
+                'deviceName' => $deviceName,
+            ]);
 
         $response->assertStatus(200)
             ->assertJson([
                 'isSuccess' => true,
-                'message' => 'Logged out successfully.',
+                'message' => 'Log out successful.',
+                'data' => [
+                    'deviceName' => $deviceName,
+                ]
             ]);
     }
 
-    public function test_user_can_logout_from_all_devices()
+    /**
+     * Test that an unverified user cannot log out.
+     */
+    public function test_unverified_user_cannot_logout()
     {
-        $user = \App\Models\User::factory()->create();
-        $user->createToken('Device 1');
-        $user->createToken('Device 2');
-
-        $token = $user->createToken('Current Device')->plainTextToken;
+        $deviceName = 'Test Device';
+        $user = \App\Models\User::factory()->create([
+            'email_verified_at' => null, // Email not verified
+            'is_verified' => false,
+        ]);
+        $token = $user->createToken($deviceName)->plainTextToken;
 
         $response = $this->withHeader('Authorization', "Bearer $token")
-            ->postJson('/api/v1/logout-from-all');
+            ->postJson('/api/v1/logout', [
+                'deviceName' => $deviceName,
+            ]);
 
-        $response->assertStatus(200)
+        $response->assertStatus(409)
             ->assertJson([
-                'success' => true,
-                'message' => 'Logged out from all sessions successfully.',
+                'isSuccess' => false,
+                'message' => 'Your email address is not verified.',
             ]);
     }
 
-    public function test_user_can_refresh_access_token_with_valid_refresh_token()
+    /**
+     * Test that a verified user can refresh their access token with a valid refresh token.
+     */
+    public function test_verified_user_can_refresh_access_token_with_valid_refresh_token()
     {
-        $user = \App\Models\User::factory()->create();
+        $deviceName = 'Test Device';
+        $user = \App\Models\User::factory()->create([
+            'email_verified_at' => now(),
+            'is_verified' => true,
+        ]);
 
         $refreshTokenValue = Str::random(64);
+        $hashedRefreshToken = Hash::make($refreshTokenValue);
         \App\Models\RefreshToken::create([
             'user_id' => $user->id,
-            'token' => hash('sha256', $refreshTokenValue),
+            'token' => $hashedRefreshToken,
+            'device_name' => $deviceName,
             'expires_at' => now()->addDays(30),
         ]);
 
         $response = $this->postJson('/api/v1/refresh-token', [
             'refreshToken' => $refreshTokenValue,
-            'deviceName' => 'Postman',
+            'deviceName' => $deviceName,
         ]);
 
         $response->assertStatus(200)
@@ -122,24 +150,40 @@ class AuthControllerTest extends TestCase
                     'accessToken',
                     'refreshToken',
                     'expiresIn',
+                    'deviceName',
                 ],
             ]);
     }
 
-    public function test_user_cannot_refresh_token_with_invalid_refresh_token()
+    /**
+     * Test that an unverified user cannot refresh their access token.
+     */
+    public function test_unverified_user_cannot_refresh_access_token()
     {
-        $response = $this->postJson('/api/v1/refresh-token', [
-            'refreshToken' => 'invalid-refresh-token',
-            'deviceName' => 'Postman',
+        $deviceName = 'Test Device';
+        $user = \App\Models\User::factory()->create([
+            'email_verified_at' => null, // Email not verified
+            'is_verified' => false,
         ]);
 
-        $response->assertStatus(500)
+        $refreshTokenValue = Str::random(64);
+        $hashedRefreshToken = Hash::make($refreshTokenValue);
+        \App\Models\RefreshToken::create([
+            'user_id' => $user->id,
+            'token' => $hashedRefreshToken,
+            'device_name' => $deviceName,
+            'expires_at' => now()->addDays(30),
+        ]);
+
+        $response = $this->postJson('/api/v1/refresh-token', [
+            'refreshToken' => $refreshTokenValue,
+            'deviceName' => $deviceName,
+        ]);
+
+        $response->assertStatus(409)
             ->assertJson([
                 'isSuccess' => false,
-                'message' => 'Invalid or expired refresh token.',
+                'message' => 'Access denied.',
             ]);
     }
-
-
-
 }

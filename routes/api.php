@@ -51,7 +51,7 @@ Route::group(['prefix' => '/v1', 'namespace' => 'App\Http\Controllers\Api\V1', '
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1', 'email.verified');
 
     /** Middleware to verify if the refresh token exists in the refresh_tokens table before executing other actions */
-    Route::group(['middleware' => ['verify.refresh.token',]], function () {
+    Route::group(['middleware' => ['verify.refresh.token', 'email.verified']], function () {
         /** Route to refresh the accessToken using refreshToken */
         Route::post('/refresh-token', [AuthController::class, 'refreshToken']);
     });

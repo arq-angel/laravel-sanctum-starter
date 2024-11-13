@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class VerifyRefreshToken
@@ -45,14 +46,25 @@ class VerifyRefreshToken
 
         // Step 4: Validate the token's existence and hash
         if (!$storedRefreshToken || !Hash::check($request->refreshToken, $storedRefreshToken->token)) {
+
+            Log::warning('Invalid refresh token attempt.', [
+                'deviceName' => $request->deviceName,
+                'ip' => $request->ip(),
+            ]);
+
             $response['message'] = 'Invalid refresh token!';
             return response()->json($response, Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         // Step 5: Validate that the token is not expired
         if ($storedRefreshToken->expires_at < Carbon::now()) {
-            $response['message'] = 'Expired refresh token!';
-            return response()->json($response, Response::HTTP_UNPROCESSABLE_ENTITY);
+            Log::info('Expired refresh token used.', [
+                'deviceName' => $request->deviceName,
+                'ip' => $request->ip(),
+            ]);
+            
+            $response['message'] = 'Expired refresh token! Please log in again.';
+            return response()->json($response, Response::HTTP_UNAUTHORIZED);
         }
 
         // Step 6: Proceed with the next middleware or request handler
